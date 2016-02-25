@@ -39,7 +39,7 @@ server.start((err) => {
 
 function createPDF(url) {
   return new Promise((resolve, reject) => {
-    const conv = spawn('./node_modules/.bin/phantomjs', ['conv.js', url]);
+    const conv = spawn('phantomjs', ['conv.js', url]);
     conv.stdout.on('data', (data) => resolve(data));
     conv.stderr.on('data', (data) => reject(`Error converting ${url} to PDF`));
   });
@@ -58,16 +58,15 @@ function generatePDF(request, reply) {
       const path = p.toString();
       return `./pdfs/${path.replace(/\n/, '')}`
     });
-    const pdfs = new PDFMerge(paths);
-    pdfs.asBuffer().promise().then(buffer => {
-      fs.writeFile('./newfile.pdf', (err) => {
-        console.log(err);
+    const pdfs = new PDFMerge(fixedPaths);
+    pdfs.asReadStream().promise()
+    .then(buffer => {
+      fs.writeFile('./pdfs/newfile.pdf', buffer, (err) => {
+        reply({
+          error: err,
+          file: fixedPaths
+        });
       })
-    })
-    .catch(err => console.log(err));
-
-    reply({
-      paths: fixedPaths
-    });
+    }).catch(err => console.log(err));
   }).catch(err => console.log('err', err));
 }
