@@ -1,9 +1,9 @@
-'use strict';
-
-const spawn = require('child_process').spawn;
-const Path = require('path');
-const Hapi = require('hapi');
-const Inert = require('inert');
+import {spawn} from 'child_process';
+import Path from 'path';
+import PDFMerge from 'pdf-merge';
+import Hapi from 'hapi';
+import fs from 'fs';
+import Inert from 'inert';
 
 const server = new Hapi.Server();
 server.connection({
@@ -36,18 +36,38 @@ server.start((err) => {
   console.log('Server running at:', server.info.uri);
 });
 
+
+function createPDF(url) {
+  return new Promise((resolve, reject) => {
+    const conv = spawn('./node_modules/.bin/phantomjs', ['conv.js', url]);
+    conv.stdout.on('data', (data) => resolve(data));
+    conv.stderr.on('data', (data) => reject(`Error converting ${url} to PDF`));
+  });
+}
+
 function generatePDF(request, reply) {
-  const conv = spawn('./node_modules/.bin/phantomjs', ['conv.js', request.payload.url]);
-  conv.stdout.on('data', (data) => {
-    reply({
-      url: `http://localhost:3005/pdfs/${data}`
+  const files = request.payload.url;
+  if (!Array.isArray(files) || !files.length) {
+    return reply({
+      error: 'Expected an array of urls to print to PDF. None was received'
     });
-  });
-  conv.stderr.on('data', (data) => {
-    console.log('unexpected error');
-    reply({
-      error: 'an error occured while generating the filename'
+  }
+  Promise.all([...files.map(url => createPDF.call(this, url))])
+  .then(paths => {
+    const fixedPaths = paths.map(p => {
+      const path = p.toString();
+      return `./pdfs/${path.replace(/\n/, '')}`
     });
-  });
-  conv.on('close', (code) => console.log('closed exited'));
+    const pdfs = new PDFMerge(paths);
+    pdfs.asBuffer().promise().then(buffer => {
+      fs.writeFile('./newfile.pdf', (err) => {
+        console.log(err);
+      })
+    })
+    .catch(err => console.log(err));
+
+    reply({
+      paths: fixedPaths
+    });
+  }).catch(err => console.log('err', err));
 }
