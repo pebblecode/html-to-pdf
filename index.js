@@ -39,7 +39,7 @@ server.start((err) => {
 
 function createPDF(url) {
   return new Promise((resolve, reject) => {
-    const conv = spawn('phantomjs', ['conv.js', url]);
+    const conv = spawn('./node_modules/.bin/phantomjs', ['conv.js', url]);
     conv.stdout.on('data', (data) => resolve(data));
     conv.stderr.on('data', (data) => reject(`Error converting ${url} to PDF`));
   });

@@ -18,4 +18,5 @@ The expected payload
 To run the app locally, you need to have `docker` and `docker-compose` installed. The easiest way to get this is via: https://www.docker.com/products/docker-toolbox
 
 * `docker-compose build` // builds the app
-* `docker-compose up` // runs the app
+
+* `docker-compose run --service-ports web` // runs the app
